@@ -1,1 +1,11 @@
+---
+- name: route53 record list up
+  hosts: all
+  become: true
+  gather_facts: false
 
+  roles:
+    - role: credentials
+    - role: create_configmap
+    - role: create_cronjob
+    - role: create_job
