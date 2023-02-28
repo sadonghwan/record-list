@@ -1,1 +1,62 @@
-
+- name: Create a job
+  k8s_job:
+    namespace: default
+    name: aws-cli-job
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: aws-cli-job
+      spec:
+        template:
+          spec:
+            containers:
+            - name: aws-cli
+              image: amazon/aws-cli
+              command: ["/bin/sh"]
+              args:
+              - "-c"
+              - |
+                aws route53 list-resource-record-sets \
+                  --hosted-zone-id $HOSTED_ZONE_ID \
+                  --query "ResourceRecordSets[?Type == '$RECORD'].[Name, ResourceRecords[0].Value]" \
+                  --output text \
+                  | sed 's/\t/ \/ /' \
+                  >> /log/$(DOMAIN)_$(RECORD)_$(date +"%Y-%m-%d").log
+              env:
+                - name: HOSTED_ZONE_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hosted-zone-id-config
+                      key: hosted_zone_id
+                - name: RECORD
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hosted-zone-id-config
+                      key: arecord
+                - name: DOMAIN
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hosted-zone-id-config
+                      key: domain
+                - name: LOG_PATH
+                  value: "/log"
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: aws-route53-secret
+                      key: aws-access-key-id
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: aws-route53-secret
+                      key: aws-secret-access-key
+              volumeMounts:
+              - name: log-volume
+                mountPath: /log
+            restartPolicy: OnFailure
+            volumes:
+            - name: log-volume
+              hostPath:
+                path: /log
+      backoffLimit: 3
