@@ -1,1 +1,13 @@
-
+- name: create configmap
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: hosted-zone-id-config
+      data:
+        domain: sananhowoo.com
+        hosted_zone_id: Z09893142GHVB5LM18ZAB
+        arecord: A
+        cnamerecord: CNAME
